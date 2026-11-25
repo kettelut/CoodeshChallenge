@@ -10,6 +10,39 @@
 *.userosscache
 *.sln.docstates
 *.env
+*.env.*
+appsettings.[Ll]ocal.json
+appsettings.*.[Ll]ocal.json
+secrets.json
+*.secrets.json
+.secrets/
+.credentials/
+credentials.local.json
+*.private.pem
+*.key
+*.p12
+*.p8
+*.local.code-workspace
+*.user.code-workspace
+
+# Local FIX stores, logs and other runtime data
+runtime/
+fix-store/
+fix-logs/
+
+# Local database files
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+*.sqlite3-shm
+*.sqlite3-wal
+*.sqlite3-journal
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -400,11 +433,9 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# VS Code files for those working on multiple tools
+# VS Code user state; shared tasks, extensions and snippets may be committed
 .vscode/*
-!.vscode/settings.json
 !.vscode/tasks.json
-!.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 

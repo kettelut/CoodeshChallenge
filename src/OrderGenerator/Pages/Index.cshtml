@@ -1,0 +1,172 @@
+@page
+@using System.Globalization
+@using OrderGenerator.Application
+@using OrderProcessing.Domain
+@model IndexModel
+@{
+    var result = Model.Result;
+    bool accepted = result?.Status == SubmissionStatus.Accepted;
+    bool rejected = result?.Status == SubmissionStatus.Rejected;
+    string title = result?.Status switch
+    {
+        SubmissionStatus.Accepted => "Ordem aceita",
+        SubmissionStatus.Rejected => "Ordem rejeitada",
+        SubmissionStatus.ValidationFailed => "Ordem não enviada: dados inválidos",
+        SubmissionStatus.Unavailable => "Serviço indisponível",
+        SubmissionStatus.Disconnected => "Conexão interrompida",
+        SubmissionStatus.SendFailed => "Falha no envio",
+        SubmissionStatus.TimedOut => "Tempo de resposta esgotado",
+        SubmissionStatus.Cancelled => "Envio cancelado",
+        SubmissionStatus.TechnicalFailure => "Falha técnica",
+        _ => "Status não reconhecido"
+    };
+    bool unknown = result != null && !accepted && !rejected
+        && (result.OutcomeMayBeUnknown || !Enum.IsDefined(result.Status));
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gerador de Ordens</title>
+    <link rel="stylesheet" href="~/css/order.css" asp-append-version="true" />
+    <script src="~/js/order.js" asp-append-version="true" defer></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-content"><span class="brand-mark" aria-hidden="true">O</span> Order Generator</div>
+    </header>
+    <main class="container">
+        <div class="intro">
+            <p class="eyebrow">Mesa de operações</p>
+            <h1>Gerador de Ordens</h1>
+            <p>Preencha os dados para enviar uma ordem limitada e acompanhar sua resposta.</p>
+        </div>
+
+        @if (result is not null)
+        {
+            <section class="card result @(accepted ? "accepted" : rejected ? "rejected" : "neutral")"
+                     aria-labelledby="result-title" role="status">
+                <p class="eyebrow">Resultado da solicitação</p>
+                <h2 id="result-title">@title</h2>
+                @if (accepted)
+                {
+                    <p>Ordem reconhecida como nova. Isso não indica uma execução no mercado.</p>
+                }
+                else if (rejected)
+                {
+                    <p>A ordem foi rejeitada pelo processamento de negócio.</p>
+                }
+                else if (unknown)
+                {
+                    <p><strong>Não foi possível confirmar o status da ordem.</strong> Consulte o identificador antes de enviar outra ordem. Não há reenvio automático.</p>
+                }
+                else
+                {
+                    <p>Esta resposta não representa uma rejeição de negócio.</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(result.Explanation))
+                {
+                    <p><strong>Informação da resposta:</strong> @result.Explanation</p>
+                }
+                <dl class="details">
+                    @if (accepted || rejected)
+                    {
+                        <div><dt>ExecType</dt><dd>@(accepted ? "New" : "Rejected")</dd></div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(result.ClOrdId))
+                    {
+                        <div><dt>ClOrdID</dt><dd>@result.ClOrdId</dd></div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(result.OrderId))
+                    {
+                        <div><dt>OrderID</dt><dd>@result.OrderId</dd></div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(result.ExecId))
+                    {
+                        <div><dt>ExecID</dt><dd>@result.ExecId</dd></div>
+                    }
+                    @if (result.RejectionReason is not null)
+                    {
+                        <div><dt>Código de rejeição</dt><dd>@result.RejectionReason</dd></div>
+                    }
+                    <div><dt>Símbolo informado</dt><dd>@result.Symbol</dd></div>
+                    <div><dt>Lado informado</dt><dd>@(result.Side == OrderSide.Buy ? "Compra" : "Venda")</dd></div>
+                    <div><dt>Quantidade informada</dt><dd>@result.Quantity.ToString(CultureInfo.InvariantCulture)</dd></div>
+                    <div><dt>Preço informado (BRL)</dt><dd>@result.Price.ToString("0.00", CultureInfo.InvariantCulture)</dd></div>
+                    @if (accepted || rejected)
+                    {
+                        <div><dt>Horário da resposta</dt><dd>Não disponibilizado pelo serviço</dd></div>
+                    }
+                </dl>
+            </section>
+        }
+
+        <section class="card" aria-labelledby="form-title">
+            <div class="section-heading">
+                <div><p class="eyebrow">Nova solicitação</p><h2 id="form-title">Dados da ordem</h2></div>
+                <span class="badge">Ordem limitada</span>
+            </div>
+            <p class="form-intro">Todos os campos são obrigatórios.</p>
+            @if (result is not null)
+            {
+                <p>Este formulário já foi utilizado. Não atualize nem reenvie esta página; use “Criar nova ordem” para uma nova solicitação.</p>
+            }
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="validation-summary" role="alert">
+                    <strong>Não foi possível enviar a ordem.</strong>
+                    <div asp-validation-summary="All"></div>
+                </div>
+            }
+            <form method="post" id="order-form">
+                <input asp-for="SubmissionToken" type="hidden" />
+                <div class="form-grid">
+                    <div class="field">
+                        <label asp-for="Symbol">Símbolo</label>
+                        <select asp-for="Symbol" required aria-describedby="symbol-error">
+                            <option value="">Selecione</option>
+                            <option value="PETR4">PETR4</option>
+                            <option value="VALE3">VALE3</option>
+                            <option value="VIIA4">VIIA4</option>
+                        </select>
+                        <span id="symbol-error" class="field-error" asp-validation-for="Symbol"></span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="Side">Lado</label>
+                        <select asp-for="Side" required aria-describedby="side-error">
+                            <option value="">Selecione</option>
+                            <option value="Buy">Compra (Buy)</option>
+                            <option value="Sell">Venda (Sell)</option>
+                        </select>
+                        <span id="side-error" class="field-error" asp-validation-for="Side"></span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="Quantity">Quantidade</label>
+                        <input asp-for="Quantity" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="4096"
+                               required autocomplete="off" aria-describedby="quantity-help quantity-error" />
+                        <small id="quantity-help">Número inteiro de 1 a 99999.</small>
+                        <span id="quantity-error" class="field-error" asp-validation-for="Quantity"></span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="Price">Preço (BRL)</label>
+                        <input asp-for="Price" type="text" inputmode="decimal" maxlength="4096"
+                               required autocomplete="off" placeholder="Ex.: 10.50"
+                               aria-describedby="price-help price-error" />
+                        <small id="price-help">Use ponto decimal. Maior que 0 e menor que 1000, em múltiplos de 0.01.</small>
+                        <span id="price-error" class="field-error" asp-validation-for="Price"></span>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="primary" type="submit" id="submit-order" disabled="@Model.SubmissionBlocked">Enviar ordem</button>
+                    <a class="secondary" id="clear-form" asp-page="/Index">@(Model.SubmissionBlocked ? "Criar nova ordem" : "Limpar formulário")</a>
+                </div>
+                <p id="pending" class="pending" role="status" aria-live="polite" hidden>
+                    Enviando ordem e aguardando resposta. Não atualize a página nem envie novamente.
+                </p>
+            </form>
+        </section>
+        <p class="footnote">Uma resposta de aceitação não significa que houve execução no mercado.</p>
+    </main>
+</body>
+</html>
