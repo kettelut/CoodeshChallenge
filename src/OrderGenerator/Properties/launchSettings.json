@@ -1,0 +1,18 @@
+{
+  "profiles": {
+    "http-local": {
+      "commandName": "Project",
+      "applicationUrl": "http://127.0.0.1:5080",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "https-local": {
+      "commandName": "Project",
+      "applicationUrl": "https://127.0.0.1:7080",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
